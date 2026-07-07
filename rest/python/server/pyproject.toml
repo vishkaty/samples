@@ -20,6 +20,7 @@ dependencies = [
     "ucp-sdk",
     "shortuuid",
     "httpx>=0.26.0",
+    "cryptography>=42",
 ]
 
 [dependency-groups]
@@ -27,6 +28,7 @@ dev = [
     "pytest>=8.0.0",
     "httpx>=0.26.0",
     "ruff>=0.14.11",
+    "http-message-signatures==2.0.1",
 ]
 
 [build-system]
