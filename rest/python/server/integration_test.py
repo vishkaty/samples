@@ -1737,6 +1737,55 @@ class IntegrationTest(absltest.TestCase):
         stored.get("attribution", {}).get("campaign_id"), "18234567890"
       )
 
+  def test_create_checkout_with_fulfillment_create_shape(self) -> None:
+    """Fulfillment on create accepts the shape that omits server assigned ids.
+
+    `fulfillment_method.json` marks `id` as `create: omit`, `line_item_ids` as
+    `create: optional`, and `shipping_destination.json` marks `id` as optional,
+    so a platform composing the advertised schemas sends none of them. The
+    other fulfillment tests populate all three, which is what let the request
+    model regress to the response container without any test noticing.
+    """
+    with self.client:
+      response = self.client.post(
+        "/checkout-sessions",
+        headers=self._get_headers(
+          idempotency_key="ful_create_min", request_id="ful_create_min"
+        ),
+        json={
+          "line_items": [{"item": {"id": "rose"}, "quantity": 1}],
+          "fulfillment": {
+            "methods": [
+              {
+                "type": "shipping",
+                "destinations": [
+                  {
+                    "street_address": "1 Test Way",
+                    "address_locality": "Springfield",
+                    "address_region": "CA",
+                    "address_country": "US",
+                    "postal_code": "99999",
+                  }
+                ],
+              }
+            ]
+          },
+        },
+      )
+      self.assertEqual(response.status_code, 201, f"Response: {response.text}")
+      body = response.json()
+
+      methods = body.get("fulfillment", {}).get("methods", [])
+      self.assertLen(methods, 1)
+      self.assertIsNotNone(methods[0].get("id"))
+      self.assertEqual(methods[0].get("type"), "shipping")
+
+      destinations = methods[0].get("destinations", [])
+      self.assertLen(destinations, 1)
+      self.assertIsNotNone(destinations[0].get("id"))
+      self.assertEqual(destinations[0].get("street_address"), "1 Test Way")
+      self.assertEqual(destinations[0].get("postal_code"), "99999")
+
   def test_validation_failure_answers_with_ucp_envelope(self) -> None:
     """A validation failure answers with the UCP envelope, not detail."""
     with self.client:
